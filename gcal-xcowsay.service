@@ -1,0 +1,17 @@
+[Unit]
+Description=Google Calendar xcowsay Notifier
+After=network-online.target graphical-session.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node %h/code/gcal-xcowsay/index.js
+Restart=on-failure
+RestartSec=30
+
+# Pass the display environment so xcowsay can open a window
+Environment=DISPLAY=:0
+PassEnvironment=DISPLAY DBUS_SESSION_BUS_ADDRESS XAUTHORITY XDG_RUNTIME_DIR
+
+[Install]
+WantedBy=default.target
