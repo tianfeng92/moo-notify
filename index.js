@@ -35,7 +35,9 @@ async function main() {
     sources: [
       { path: './src/plugins/sources/google-calendar', config: {} },
       { path: './src/plugins/sources/unix-socket', config: {} },
-      { path: './src/plugins/sources/hungerhub', config: {} },
+      { path: './src/plugins/sources/hungerhub', config: {
+        activeHours: { days: [1, 3], from: '00:00', to: '13:00' }
+      } },
     ],
     notifiers: [
       { path: './src/plugins/notifiers/xcowsay', config: { time: 8, monitor: 0 } }

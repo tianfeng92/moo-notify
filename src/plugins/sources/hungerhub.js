@@ -11,10 +11,39 @@ module.exports = {
     const employeeId = process.env.HUNGERHUB_EMPLOYEE_ID || config.employeeId;
     const accessToken = process.env.HUNGERHUB_TOKEN || config.accessToken;
     const pollInterval = config.pollInterval || 120;
+    // activeHours: { days: [1, 3], from: '09:00', to: '13:00' }
+    // days: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+    const activeHours = config.activeHours || null;
 
     if (!employeeId || !accessToken) {
       engine.logger.error('[hungerhub] Missing HUNGERHUB_EMPLOYEE_ID or HUNGERHUB_TOKEN env vars');
       return;
+    }
+
+    function isActiveNow() {
+      if (!activeHours) return true;
+      const now = new Date();
+      const tz = activeHours.timezone || 'America/Los_Angeles';
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(now);
+      const weekdayStr = parts.find(p => p.type === 'weekday').value;
+      const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      const currentDay = weekdayMap[weekdayStr];
+      const hours = parts.find(p => p.type === 'hour').value;
+      const minutes = parts.find(p => p.type === 'minute').value;
+      const currentTime = `${hours}:${minutes}`;
+
+      const days = activeHours.days || [1, 3];
+      if (!days.includes(currentDay)) return false;
+
+      const from = activeHours.from || '00:00';
+      const to = activeHours.to || '23:59';
+      return currentTime >= from && currentTime <= to;
     }
 
     // Track status per order to only notify on changes
@@ -65,6 +94,10 @@ module.exports = {
     };
 
     async function poll() {
+      if (!isActiveNow()) {
+        engine.logger.info('[hungerhub] Outside active hours, skipping poll');
+        return;
+      }
       try {
         const resp = await fetchOrders();
 
