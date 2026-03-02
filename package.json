@@ -1,10 +1,11 @@
 {
-  "name": "gcal-xcowsay",
+  "name": "moo-notify",
   "version": "1.0.0",
-  "description": "Google Calendar notifications via xcowsay",
+  "description": "Pluggable desktop notification service with xcowsay",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test tests/"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",

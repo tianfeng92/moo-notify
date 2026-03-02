@@ -2,10 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="$HOME/.config/gcal-xcowsay"
+CONFIG_DIR="$HOME/.config/moo-notify"
 SERVICE_DIR="$HOME/.config/systemd/user"
 
-echo "=== gcal-xcowsay setup ==="
+echo "=== moo-notify setup ==="
 
 # 1. Install Node.js dependencies
 echo "[1/4] Installing Node.js dependencies..."
@@ -49,19 +49,19 @@ echo "[3/4] Installing systemd user service..."
 mkdir -p "$SERVICE_DIR"
 
 # Substitute HOME path into service file
-SERVICE_FILE="$SERVICE_DIR/gcal-xcowsay.service"
-sed "s|%h|$HOME|g" "$SCRIPT_DIR/gcal-xcowsay.service" > "$SERVICE_FILE"
+SERVICE_FILE="$SERVICE_DIR/moo-notify.service"
+sed "s|%h|$HOME|g" "$SCRIPT_DIR/moo-notify.service" > "$SERVICE_FILE"
 
 echo "[4/4] Enabling and starting service..."
 systemctl --user daemon-reload
-systemctl --user enable gcal-xcowsay.service
-systemctl --user start gcal-xcowsay.service
+systemctl --user enable moo-notify.service
+systemctl --user start moo-notify.service
 
 echo ""
 echo "=== Done! ==="
 echo "Service status:"
-systemctl --user status gcal-xcowsay.service --no-pager || true
+systemctl --user status moo-notify.service --no-pager || true
 echo ""
 echo "View logs with:"
-echo "  journalctl --user -u gcal-xcowsay.service -f"
-echo "  cat $CONFIG_DIR/gcal_notify.log"
+echo "  journalctl --user -u moo-notify.service -f"
+echo "  cat $CONFIG_DIR/broadcast.log"
