@@ -69,6 +69,8 @@ Polls your primary Google Calendar every 60s and notifies at 5 min and 1 min bef
 
 Tracks food delivery orders and notifies on status changes (picked up, on the way, delivered).
 
+![HungerHub notification screenshot](assets/screenshot2.png)
+
 **Setup:**
 
 Set these environment variables before starting the service:
