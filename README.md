@@ -1,59 +1,134 @@
-# gcal-xcowsay
+# moo-notify
 
-Google Calendar → xcowsay desktop notifications. Shows a cow popup 5 minutes before each calendar event.
+A pluggable desktop notification broadcast service. Sources produce notifications, notifiers display them — all via [xcowsay](https://github.com/nickg/xcowsay).
 
-## Quick Start
+## Install
 
-### 1. Get Google Calendar API credentials
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a project
-3. Enable **Google Calendar API** (APIs & Services > Library)
-4. Go to **APIs & Services > Credentials**
-5. Click **Create Credentials > OAuth 2.0 Client ID**
-6. Application type: **Desktop app**
-7. Download the JSON file
-8. Save it to `~/.config/gcal-xcowsay/credentials.json`
-
-### 2. Run setup
+### 1. Install xcowsay
 
 ```bash
-cd ~/code/gcal-xcowsay
+sudo apt install xcowsay
+```
+
+### 2. Install the service
+
+```bash
+git clone <this-repo> ~/code/moo-notify
+cd ~/code/moo-notify
 ./setup.sh
 ```
 
-This installs Node.js deps, does the OAuth flow (opens browser), installs the systemd service, and starts it.
+`setup.sh` installs Node.js deps, creates `~/.config/moo-notify/`, walks you through Google OAuth if `credentials.json` is present, installs and starts the systemd user service.
 
-### 3. Verify it's running
-
-```bash
-systemctl --user status gcal-xcowsay.service
-journalctl --user -u gcal-xcowsay.service -f
-```
-
-## Manual usage (no systemd)
+To run without systemd:
 
 ```bash
 npm install
 node index.js
 ```
 
-## Configuration
+### 3. Verify it's running
 
-Edit `index.js` to change:
+```bash
+systemctl --user status moo-notify.service
+```
 
-| Variable | Default | Description |
-|---|---|---|
-| `NOTIFY_BEFORE_MINUTES` | `5` | How far ahead to notify |
-| `POLL_INTERVAL_SECONDS` | `60` | How often to poll Calendar API |
+### 4. Test that the cow can talk
+
+```bash
+./tests/test-notification.sh            # show all sample notifications
+./tests/test-notification.sh calendar   # google calendar format
+./tests/test-notification.sh hungerhub  # hungerhub delivery format
+./tests/test-notification.sh socket     # unix socket format
+```
+
+Runs xcowsay directly with sample data — no service needed. If the cow doesn't appear, check the logs:
+
+```bash
+tail -f ~/.config/moo-notify/broadcast.log
+```
+
+## Sources
+
+### Google Calendar
+
+Polls your primary Google Calendar every 60s and notifies at 5 min and 1 min before events.
+
+**Setup:**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project and enable **Google Calendar API**
+3. Go to **APIs & Services > Credentials**
+4. Create **OAuth 2.0 Client ID** (Desktop app)
+5. Download the JSON and save it to `~/.config/moo-notify/credentials.json`
+6. Run `./setup.sh` — it will open a browser for the OAuth flow
+
+### HungerHub
+
+Tracks food delivery orders and notifies on status changes (picked up, on the way, delivered).
+
+**Setup:**
+
+Set these environment variables before starting the service:
+
+```bash
+export HUNGERHUB_EMPLOYEE_ID=12345
+export HUNGERHUB_TOKEN=your-access-token
+```
+
+The systemd service passes these through via `PassEnvironment`.
+
+### Unix Socket
+
+Listens on `~/.config/moo-notify/notify.sock` for ad-hoc JSON notifications. Use this to pipe notifications from scripts, cron jobs, or other tools.
+
+**Send a notification:**
+
+```bash
+node notify-send-socket.js "Title" "Body text"
+```
+
+Or with socat:
+
+```bash
+echo '{"title":"Hello","body":"world"}' | socat - UNIX-CONNECT:$HOME/.config/moo-notify/notify.sock
+```
+
+## Custom configuration
+
+Place a `config.json` in `~/.config/moo-notify/` to override the default plugin list:
+
+```json
+{
+  "sources": [
+    { "path": "./src/plugins/sources/google-calendar", "config": { "thresholds": [10, 5, 1], "pollInterval": 30 } },
+    { "path": "./src/plugins/sources/unix-socket", "config": {} }
+  ],
+  "notifiers": [
+    { "path": "./src/plugins/notifiers/xcowsay", "config": { "time": 10, "monitor": 0 } }
+  ]
+}
+```
 
 ## Files
 
 | Path | Description |
 |---|---|
-| `~/.config/gcal-xcowsay/credentials.json` | OAuth client secret (you provide) |
-| `~/.config/gcal-xcowsay/gcal_notify.log` | Log file |
-| `~/.config/systemd/user/gcal-xcowsay.service` | Systemd service |
+| `~/.config/moo-notify/credentials.json` | Google OAuth client secret (you provide) |
+| `~/.config/moo-notify/token.json` | Cached OAuth token (auto-generated) |
+| `~/.config/moo-notify/config.json` | Optional custom plugin configuration |
+| `~/.config/moo-notify/notify.sock` | Unix socket for ad-hoc notifications |
+| `~/.config/moo-notify/broadcast.log` | Log file |
+
+## Development
+
+### Running tests
+
+```bash
+npm test
+```
+
+Uses `node:test` (built-in, zero dependencies). Tests live in `tests/`.
 
 ## Credits
 
