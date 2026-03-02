@@ -2,6 +2,8 @@
 
 A pluggable desktop notification broadcast service. Sources produce notifications, notifiers display them — all via [xcowsay](https://github.com/nickg/xcowsay).
 
+![moo-notify screenshot](assets/screenshot.png)
+
 ## Install
 
 ### 1. Install xcowsay
