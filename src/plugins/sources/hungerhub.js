@@ -1,8 +1,12 @@
 'use strict';
 
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 const API_URL = 'https://nbe.hungerhub.com/api/v1/company/orders';
+const STATE_PATH = path.join(os.homedir(), '.config', 'moo-notify', 'hungerhub-state.json');
 
 module.exports = {
   name: 'hungerhub',
@@ -46,8 +50,32 @@ module.exports = {
       return currentTime >= from && currentTime <= to;
     }
 
-    // Track status per order to only notify on changes
+    // Track status per order to only notify on changes — persisted to disk
     const orderState = new Map();
+
+    function loadState() {
+      try {
+        if (fs.existsSync(STATE_PATH)) {
+          const data = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+          for (const [k, v] of Object.entries(data)) {
+            orderState.set(Number(k), v);
+          }
+        }
+      } catch (err) {
+        engine.logger.error(`[hungerhub] Failed to load state: ${err.message}`);
+      }
+    }
+
+    function saveState() {
+      try {
+        const obj = Object.fromEntries(orderState);
+        fs.writeFileSync(STATE_PATH, JSON.stringify(obj) + '\n');
+      } catch (err) {
+        engine.logger.error(`[hungerhub] Failed to save state: ${err.message}`);
+      }
+    }
+
+    loadState();
 
     function fetchOrders() {
       return new Promise((resolve, reject) => {
@@ -126,6 +154,7 @@ module.exports = {
           // First time seeing this order — log it but only notify if interesting
           if (!prevStatus) {
             orderState.set(orderId, currentStatus);
+            saveState();
             engine.logger.info(`[hungerhub] Tracking order #${orderId} from ${restaurant} (${currentStatus})`);
 
             if (currentStatus !== 'confirmed' && currentStatus !== 'pickup_started') {
@@ -141,6 +170,7 @@ module.exports = {
           // Status changed — notify
           if (currentStatus !== prevStatus) {
             orderState.set(orderId, currentStatus);
+            saveState();
             const msg = statusMessages[currentStatus] || currentStatus;
             engine.logger.info(`[hungerhub] Order #${orderId}: ${prevStatus} -> ${currentStatus}`);
 
@@ -153,11 +183,14 @@ module.exports = {
         }
 
         // Clean up orders no longer active
+        let cleaned = false;
         for (const id of orderState.keys()) {
           if (!orders.some(o => o.attributes.id === id)) {
             orderState.delete(id);
+            cleaned = true;
           }
         }
+        if (cleaned) saveState();
       } catch (err) {
         engine.logger.error(`[hungerhub] Poll error: ${err.message}`);
       }

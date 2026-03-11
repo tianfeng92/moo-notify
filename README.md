@@ -130,6 +130,7 @@ Use `./moo-ctl` to enable/disable plugins, or place a `config.json` in `~/.confi
 | `~/.config/moo-notify/credentials.json` | Google OAuth client secret (you provide) |
 | `~/.config/moo-notify/token.json` | Cached OAuth token (auto-generated) |
 | `~/.config/moo-notify/config.json` | Optional custom plugin configuration |
+| `~/.config/moo-notify/hungerhub-state.json` | Persisted order tracking state (survives restarts) |
 | `~/.config/moo-notify/notify.sock` | Unix socket for ad-hoc notifications |
 | `~/.config/moo-notify/broadcast.log` | Log file |
 
