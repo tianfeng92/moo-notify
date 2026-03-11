@@ -29,13 +29,22 @@ npm install
 node index.js
 ```
 
-### 3. Verify it's running
+### 3. Enable the plugins you want
+
+```bash
+./moo-ctl list                    # see all plugins and their status
+./moo-ctl enable google-calendar  # enable a plugin
+./moo-ctl disable hungerhub       # disable a plugin
+./moo-ctl restart                 # restart to apply changes
+```
+
+### 4. Verify it's running
 
 ```bash
 systemctl --user status moo-notify.service
 ```
 
-### 4. Test that the cow can talk
+### 5. Test that the cow can talk
 
 ```bash
 ./tests/test-notification.sh            # show all sample notifications
@@ -100,7 +109,7 @@ echo '{"title":"Hello","body":"world"}' | socat - UNIX-CONNECT:$HOME/.config/moo
 
 ## Custom configuration
 
-Place a `config.json` in `~/.config/moo-notify/` to override the default plugin list:
+Use `./moo-ctl` to enable/disable plugins, or place a `config.json` in `~/.config/moo-notify/` to override the full plugin list with custom options:
 
 ```json
 {

@@ -1,0 +1,155 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+const CONFIG_DIR = path.join(os.homedir(), '.config', 'moo-notify');
+const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json');
+const PROJECT_DIR = path.resolve(__dirname);
+
+// All available plugins (must match directory names under src/plugins/)
+const AVAILABLE = {
+  sources: {
+    'google-calendar': { path: './src/plugins/sources/google-calendar', config: {} },
+    'unix-socket':     { path: './src/plugins/sources/unix-socket',     config: {} },
+    'hungerhub':       { path: './src/plugins/sources/hungerhub',       config: { activeHours: { days: [1, 3], from: '11:00', to: '13:00' } } },
+  },
+  notifiers: {
+    'xcowsay': { path: './src/plugins/notifiers/xcowsay', config: { time: 8, monitor: 0 } },
+  },
+};
+
+// Default config (matches index.js defaults)
+const DEFAULT_CONFIG = {
+  sources: [
+    AVAILABLE.sources['google-calendar'],
+    AVAILABLE.sources['unix-socket'],
+    AVAILABLE.sources['hungerhub'],
+  ],
+  notifiers: [
+    AVAILABLE.notifiers['xcowsay'],
+  ],
+};
+
+function loadConfig() {
+  if (fs.existsSync(CONFIG_PATH)) {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+  }
+  return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+}
+
+function saveConfig(config) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
+}
+
+function pluginName(entry) {
+  return path.basename(entry.path, '.js');
+}
+
+function listPlugins() {
+  const config = loadConfig();
+  const enabledSources = new Set(config.sources.map(pluginName));
+  const enabledNotifiers = new Set(config.notifiers.map(pluginName));
+
+  console.log('Sources:');
+  for (const name of Object.keys(AVAILABLE.sources)) {
+    const status = enabledSources.has(name) ? 'enabled' : 'disabled';
+    console.log(`  ${status === 'enabled' ? '+' : '-'} ${name}  (${status})`);
+  }
+
+  console.log('\nNotifiers:');
+  for (const name of Object.keys(AVAILABLE.notifiers)) {
+    const status = enabledNotifiers.has(name) ? 'enabled' : 'disabled';
+    console.log(`  ${status === 'enabled' ? '+' : '-'} ${name}  (${status})`);
+  }
+}
+
+function enablePlugin(name) {
+  const config = loadConfig();
+
+  if (AVAILABLE.sources[name]) {
+    if (config.sources.some(s => pluginName(s) === name)) {
+      console.log(`Source "${name}" is already enabled.`);
+      return;
+    }
+    config.sources.push(AVAILABLE.sources[name]);
+    saveConfig(config);
+    console.log(`Enabled source: ${name}`);
+  } else if (AVAILABLE.notifiers[name]) {
+    if (config.notifiers.some(n => pluginName(n) === name)) {
+      console.log(`Notifier "${name}" is already enabled.`);
+      return;
+    }
+    config.notifiers.push(AVAILABLE.notifiers[name]);
+    saveConfig(config);
+    console.log(`Enabled notifier: ${name}`);
+  } else {
+    console.error(`Unknown plugin: ${name}`);
+    console.error(`Available: ${[...Object.keys(AVAILABLE.sources), ...Object.keys(AVAILABLE.notifiers)].join(', ')}`);
+    process.exit(1);
+  }
+
+  console.log('Restart the service to apply: systemctl --user restart moo-notify.service');
+}
+
+function disablePlugin(name) {
+  const config = loadConfig();
+  let found = false;
+
+  const srcIdx = config.sources.findIndex(s => pluginName(s) === name);
+  if (srcIdx !== -1) {
+    config.sources.splice(srcIdx, 1);
+    found = true;
+  }
+
+  const notIdx = config.notifiers.findIndex(n => pluginName(n) === name);
+  if (notIdx !== -1) {
+    config.notifiers.splice(notIdx, 1);
+    found = true;
+  }
+
+  if (!found) {
+    console.log(`Plugin "${name}" is not currently enabled.`);
+    return;
+  }
+
+  saveConfig(config);
+  console.log(`Disabled: ${name}`);
+  console.log('Restart the service to apply: systemctl --user restart moo-notify.service');
+}
+
+// --- CLI ---
+const [,, command, ...args] = process.argv;
+
+switch (command) {
+  case 'list':
+  case 'ls':
+    listPlugins();
+    break;
+  case 'enable':
+    if (!args[0]) { console.error('Usage: moo-ctl enable <plugin>'); process.exit(1); }
+    enablePlugin(args[0]);
+    break;
+  case 'disable':
+    if (!args[0]) { console.error('Usage: moo-ctl disable <plugin>'); process.exit(1); }
+    disablePlugin(args[0]);
+    break;
+  case 'restart':
+    console.log('Restarting moo-notify service...');
+    require('child_process').execSync('systemctl --user restart moo-notify.service', { stdio: 'inherit' });
+    break;
+  default:
+    console.log(`moo-ctl — manage moo-notify plugins
+
+Usage:
+  moo-ctl list                 Show all plugins and their status
+  moo-ctl enable <plugin>      Enable a plugin
+  moo-ctl disable <plugin>     Disable a plugin
+  moo-ctl restart              Restart the service
+
+Plugins: ${[...Object.keys(AVAILABLE.sources), ...Object.keys(AVAILABLE.notifiers)].join(', ')}`);
+    break;
+}
