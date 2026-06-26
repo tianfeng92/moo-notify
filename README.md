@@ -91,6 +91,30 @@ export HUNGERHUB_TOKEN=your-access-token
 
 The systemd service passes these through via `PassEnvironment`.
 
+### Claude Code Status
+
+Monitors all your [Claude Code](https://docs.anthropic.com/en/docs/claude-code) sessions and notifies when one finishes or needs permission input — useful when juggling multiple sessions.
+
+**Notifications:**
+
+- `Finished - <project>` — Claude completed a task
+- `Waiting permission - <project>` — Claude needs a yes/no
+
+Permission prompts always notify immediately. Finished notifications only fire when a session has been running longer than 30 seconds (configurable), so quick interactions stay silent.
+
+**Setup:**
+
+```bash
+sudo apt install jq socat      # dependencies
+./moo-ctl enable claude-code
+```
+
+This installs a hook script at `~/.claude/hooks/moo-status.sh` and registers hooks in `~/.claude/settings.json`. To customize the threshold, edit `~/.config/moo-notify/config.json` and set `threshold` (in seconds) on the claude-code source config. To remove:
+
+```bash
+./moo-ctl disable claude-code  # removes hook script and settings entries
+```
+
 ### Unix Socket
 
 Listens on `~/.config/moo-notify/notify.sock` for ad-hoc JSON notifications. Use this to pipe notifications from scripts, cron jobs, or other tools.
